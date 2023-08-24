@@ -29,6 +29,6 @@ jobs:
       - name: Run publishing script
         run: |
           pwd
-          cd ../scripts
+          cd ./.github/scripts
           ./cfn-publish.sh
 
