@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "regions": "us-east-1",
+    "resourceNames": "custom-db-role"
+  }
+}

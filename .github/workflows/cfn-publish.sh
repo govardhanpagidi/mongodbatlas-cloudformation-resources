@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -x
 set -Eeou pipefail
 
 AWS_SSM_Document_Name="CFN-MongoDB-Atlas-Resource-Register"
@@ -29,6 +30,7 @@ AccountIds="711489243244"
 TargetLocationsMaxConcurrency="30"
 Document_Version="\$DEFAULT"
 CodeBuild_Project_Name="${RESOURCE_NAME}-project-$((1 + RANDOM % 100))"
+echo "resource-name: ${RESOURCE_NAME}"
 
 jq --arg ExecutionRoleName "${ExecutionRoleName}" \
     --arg TargetLocationsMaxConcurrency "${TargetLocationsMaxConcurrency}" \
@@ -37,7 +39,7 @@ jq --arg ExecutionRoleName "${ExecutionRoleName}" \
     '.[0].ExecutionRoleName?|=$ExecutionRoleName |
     .[0].TargetLocationMaxConcurrency?|=$TargetLocationsMaxConcurrency |
     .[0].Accounts[0]?|=$AccountIds |
-    .[0].Regions[0]?|=($Regions | gsub(" "; "") | split(",")) ' \
+    .[0].Regions?|=($Regions | gsub(" "; "") | split(",")) ' \
     "$(dirname "$0")/locations.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/locations-temp.json"
 
 
@@ -60,7 +62,6 @@ jq --arg ExecutionRoleName "${ExecutionRoleName}" \
     .PvtKey[0]?|=$PvtKey |
     .ProjectName[0]?|=$ProjectName |
     .BranchName[0]?|=$BranchName |
-    .OtherParams[0]?|=$OtherParams |
     .Path[0]?|=$Path |
     .BuilderRole[0]?|=$BuilderRole |
     .AssumeRole[0]?|=$AssumeRole |
