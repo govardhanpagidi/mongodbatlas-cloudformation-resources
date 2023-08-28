@@ -95,6 +95,7 @@ for resource in ${resources}; do
 	done
 	if [[ "${status}" == "FAILED" || "${status}" == "NOT_TESTED" ]]; then
 		echo "Test_type STATUS is ${status}"
+		echo "Check the Logs in S3 bucket: ${_CFN_TEST_LOG_BUCKET}"
 		exit 1
 	fi
 	# Fetch the resource type
