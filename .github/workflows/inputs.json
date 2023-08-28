@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "regions": "us-east-1",
-    "resourceNames": "custom-db-role"
+    "regions": "eu-north-1,me-south-1",
+    "resourceNames": "custom-db-role,maintenance-window"
   }
 }
