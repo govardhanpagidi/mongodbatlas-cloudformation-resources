@@ -17,7 +17,7 @@
 set -x
 set -Eeou pipefail
 
-AWS_SSM_Document_Name="CFN-MongoDB-Atlas-Resource-Register"
+AWS_SSM_Document_Name="gov-CFN-MongoDB-Atlas-Resource-Register"
 BuilderRole="DevOpsIntegrationsContractors-CodeBuild"
 AssumeRole="arn:aws:iam::711489243244:role/DevOpsIntegrationsContractorsSSM"
 LogDeliveryBucket="atlascfnpublishing"
@@ -29,8 +29,8 @@ AccountIds="711489243244"
 TargetLocationsMaxConcurrency="30"
 Document_Version="\$DEFAULT"
 
-RESOURCES="custom-db-role,maintenance-window"
-REGIONS="us-east-1,us-west-1"
+RESOURCES="custom-db-role"
+REGIONS="us-west-1"
 
 if [ -z "${RESOURCES+x}" ];then
   echo "ATLAS_ORG_ID must be set"
