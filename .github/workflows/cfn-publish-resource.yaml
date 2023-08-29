@@ -24,6 +24,8 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
       AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: setup Atlas CLI
         uses: andreaangiolillo/atlas-cli-github-action@main
         with:
@@ -46,8 +48,6 @@ jobs:
           python-version: '3.9'
           cache: 'pip' # caching pip dependencies
       - run: pip install cloudformation-cli cloudformation-cli-go-plugin
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Run publishing script
         run: |
           pwd
