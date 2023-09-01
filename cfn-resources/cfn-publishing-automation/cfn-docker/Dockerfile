@@ -24,7 +24,7 @@ ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 # Copy the script into the image
 COPY cfn-install-mongo-cli.sh /cfn-install-mongo-cli.sh
 
-
+RUN echo "Installing MongoDB CLI"
 # Make the script executable and run it
 RUN chmod +x /cfn-install-mongo-cli.sh
 

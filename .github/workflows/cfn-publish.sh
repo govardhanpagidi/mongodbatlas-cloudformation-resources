@@ -17,7 +17,7 @@
 set -x
 set -Eeou pipefail
 
-AWS_SSM_Document_Name="gov-CFN-MongoDB-Atlas-Resource-Register"
+AWS_SSM_Document_Name="CFN-MongoDB-Atlas-Resource-Register"
 BuilderRole="DevOpsIntegrationsContractors-CodeBuild"
 AssumeRole="arn:aws:iam::711489243244:role/DevOpsIntegrationsContractorsSSM"
 LogDeliveryBucket="atlascfnpublishing"
@@ -28,9 +28,6 @@ Document_Region="us-east-1"
 AccountIds="711489243244"
 TargetLocationsMaxConcurrency="30"
 Document_Version="\$DEFAULT"
-
-RESOURCES="custom-db-role"
-REGIONS="us-west-1"
 
 if [ -z "${RESOURCES+x}" ];then
   echo "ATLAS_ORG_ID must be set"
@@ -60,10 +57,17 @@ for ResourceName in "${ResourceNames[@]}"; do
     # 4. ldap-verify
     # 5. thirdpartyintegrations
 
+    # if condition for string comparison
+    if [[ "$ResourceName" == "federated-settings-org-role-mapping" ]]; then
+        OTHER_PARAMS='{"OrgRoleMapping":[{"OrgID":"${ATLAS_ORG_ID}","OrgRole":"ORG_MEMBER","AWSRoleArn":"arn:aws:iam::711489243244:role/DevOpsIntegrationsContractorsSSM"}]}'
+    elif [[ "$ResourceName" == "trigger" ]]; then
+        OTHER_PARAMS='{"Trigger":[{"OrgID":"${ATLAS_ORG_ID}","TriggerName":"${RESOURCE_NAME}","ClusterName":"${RESOURCE_NAME}","ClusterType":"REPLICASET","ClusterTier":"M10","ClusterProvider":"AWS","ClusterRegion":"US_EAST_1","ClusterVersion":"4.4","ClusterBackupEnabled":"true","ClusterDiskSizeGB":"10","ClusterNumShards":"1","ClusterReplicationFactor":"3","ClusterLabels":"{\"environment\":\"dev\"}","ClusterAutoScalingComputeEnabled":"true","ClusterAutoScalingComputeMaxInstanceSize":"M10","ClusterAutoScalingComputeMinInstanceSize":"M10","ClusterAutoScalingDiskGBEnabled":"true","ClusterAutoScalingDiskGBMaxSize":"100","ClusterAutoScalingDiskGBMinSize":"10","ClusterAutoScalingIOPSMax":"1000","ClusterAutoScalingIOPSMin":"1000","ClusterAutoScalingIOPSMode":"PROVISIONED","ClusterAutoScalingIOPSPerGB":"0.1","ClusterAutoScalingIOPSPerGBMax":"0.1","ClusterAutoScalingIOPSPerGBMin":"0.1","ClusterAutoScalingInstanceType":"M10","ClusterAutoScalingIsEnabled":"true","ClusterAutoScalingIsProvisioned":"true","ClusterAutoScalingProviderName":"AWS","ClusterAutoScalingProviderRegion":"US_EAST_1","ClusterAutoScalingProviderType":"REPLICASET","ClusterAutoScalingProviderVersion":"4.4","ClusterAutoScalingStorageType":"PROVISIONED","ClusterAutoScalingVolumeType":"STANDARD"}]}'
+    elif [[ "$ResourceName" == "ldap-configuration" ]]; then
+        OTHER_PARAMS='{"LDAPConfiguration":[{"OrgID":"${ATLAS_ORG_ID}","BindPassword":"${ATLAS_LDAP_BIND_PASSWORD}","BindUsername":"${ATLAS_LDAP_BIND_USERNAME}","ConnectionTimeoutSecs":"30","ConnectTimeoutSecs":"30","FollowReferrals":"false","GroupMemberIdAttribute":"member","GroupNameAttribute"}]}'
+    fi
+
     Path="cfn-resources/${ResourceName}/"
-    CodeBuild_Project_Name="${ResourceName}-project-$((1 + RANDOM % 100))"
-
-
+    CodeBuild_Project_Name="${ResourceName}-project-$((1 + RANDOM % 1000))"
 
     jq --arg ExecutionRoleName "${ExecutionRoleName}" \
         --arg TargetLocationsMaxConcurrency "${TargetLocationsMaxConcurrency}" \
@@ -94,6 +98,7 @@ for ResourceName in "${ResourceNames[@]}"; do
       .PubKey[0]?|=$PubKey |
       .PvtKey[0]?|=$PvtKey |
       .ProjectName[0]?|=$ProjectName |
+      .OtherParams[0]?|=$OtherParams |
       .BranchName[0]?|=$BranchName |
       .Path[0]?|=$Path |
       .BuilderRole[0]?|=$BuilderRole |
@@ -101,10 +106,8 @@ for ResourceName in "${ResourceNames[@]}"; do
       .LogDeliveryBucket[0]?|=$LogDeliveryBucket ' \
       "$(dirname "$0")/params.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/params-temp.json"
 
-
     params_json_content=$(cat "$(dirname "$0")"/params-temp.json)
     locations_json_content=$(cat "$(dirname "$0")"/locations-temp.json)
-
 
     # use the aws cli to start the automation execution
     aws ssm start-automation-execution \

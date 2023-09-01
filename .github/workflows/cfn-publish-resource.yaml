@@ -3,17 +3,18 @@ on:
   workflow_dispatch:
     inputs:
       regions:
-        description: "comma seperated AWS regions"
+        description: "comma seperated AWS regions."
         default: "us-east-1,us-west-1"
         required: true
       resourceNames:
-        description: "the folder name of the Resource in this Repo"
+        description: "the folder name of the Resource in this Repo."
         default: "custom-db-role,maintenance-window"
         required: true
 jobs:
   publish-mongodb-atlas-resource:
     name: publish-mongodb-atlas-resource
     runs-on: ubuntu-20.04
+
     env:
       RESOURCES: ${{ github.event.inputs.resourceNames }}
       OTHER_PARAMS: ${{ github.event.inputs.otherParams }}
@@ -39,7 +40,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Run publishing script
         run: |
-          pwd
           chmod +x cfn-publish.sh
           ./cfn-publish.sh
 
