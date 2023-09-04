@@ -83,6 +83,8 @@ for ResourceName in "${ResourceNames[@]}"; do
           OTHER_PARAMS=$(cat "$(dirname "$0")"/scripts/ldap-configuration-temp.json)
           # convert json to string
           #OtherParamsString=$(echo "${OTHER_PARAMS}" | jq -r '.[0]')
+    elif [[ "$ResourceName" == "third-party-integration" ]];  then
+          echo "third-party-integration"
     fi
 
     Path="cfn-resources/${ResourceName}/"
