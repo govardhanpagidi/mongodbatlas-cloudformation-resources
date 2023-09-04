@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "regions": "eu-north-1,me-south-1",
-    "resourceNames": "custom-db-role,trigger"
+    "regions": "me-south-1",
+    "resourceNames": "ldap-verify"
   }
 }

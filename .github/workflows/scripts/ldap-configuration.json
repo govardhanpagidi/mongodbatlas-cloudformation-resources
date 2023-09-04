@@ -1,0 +1,5 @@
+{
+  "LDAP_BIND_PASSWORD": "ILuv@DS4LDAP",
+  "LDAP_BIND_USER_NAME": "CN=Administrator,CN=Users,DC=aws-atlas-ads-test-01,DC=mmscloudteam,DC=com",
+  "LDAP_HOST_NAME": "aws-atlas-ads-test-01.ldap.mmscloudteam.com"
+}
