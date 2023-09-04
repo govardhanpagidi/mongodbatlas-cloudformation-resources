@@ -86,6 +86,9 @@ for ResourceName in "${ResourceNames[@]}"; do
     elif [[ "$ResourceName" == "third-party-integration" ]];  then
           echo "third-party-integration"
     fi
+    if [ -z ${OTHER_PARAMS+x} ];then
+        echo "OTHER_PARAMS param is empty"
+    fi
 
     Path="cfn-resources/${ResourceName}/"
     CodeBuild_Project_Name="${ResourceName}-project-$((1 + RANDOM % 1000))"
