@@ -19,20 +19,28 @@ set -Eeou pipefail
 
 AWS_SSM_Document_Name="CFN-MongoDB-Atlas-Resource-Register"
 BuilderRole="DevOpsIntegrationsContractors-CodeBuild"
-AssumeRole="arn:aws:iam::711489243244:role/DevOpsIntegrationsContractorsSSM"
+AssumeRole="arn:aws:iam::${AWS_ACCOUNT_ID}:role/DevOpsIntegrationsContractorsSSM"
 LogDeliveryBucket="atlascfnpublishing"
 Repository="https://github.com/mongodb/mongodbatlas-cloudformation-resources"
 BranchName="master"
 ExecutionRoleName="DevOpsIntegrationsContractorsSSM"
 Document_Region="us-east-1"
-AccountIds="711489243244"
+AccountIds="${AWS_ACCOUNT_ID}"
 TargetLocationsMaxConcurrency="30"
 Document_Version="\$DEFAULT"
 
-if [ -z "${RESOURCES+x}" ];then
+# declare OTHER_PARAMS will be used for CFN TEST input creation.
+# This script will update these params for  Few Resources l .
+OtherParams="'{\"param\":\"value\"}'"
+orgid="orgid:${ATLAS_ORG_ID}"
+echo "echoing:${orgid}"
+
+
+if [ -z "${ATLAS_ORG_ID+x}" ];then
   echo "ATLAS_ORG_ID must be set"
   exit 1
 fi
+
 
 if [ -z "${REGIONS+x}" ];then
   echo "REGIONS must be set"
@@ -58,37 +66,67 @@ for ResourceName in "${ResourceNames[@]}"; do
       # 5. thirdpartyintegrations
 
      # if condition for string comparison
-     if [[ "$ResourceName" == "trigger" ]]; then
-          echo "trigger"
-          cat "$(dirname "$0")"/scripts/ldap-configuration.json
-          # fill the LDAP_BIND_PASSWORD in scripts/ldap-configuration.json file using jq
+     if [ -n "${OTHER_PARAMS}" ];then
+           OtherParams=${OTHER_PARAMS}
+     elif [ "$ResourceName" == "trigger" ] && [ -z "${OTHER_PARAMS}" ] ; then
+          echo "OTHER_PARAMS required with PROJECT_ID,DB_NAME,COLLECTION_NAME, FUNC_NAME,FUNC_ID,SERVICE_ID and APP_ID"
+          exit 1
+
+     elif [[ "$ResourceName" == "federated-settings-org-role-mapping" ]]; then
+          echo "setting up other params for federated-settings-org-role-mapping"
+          cat "$(dirname "$0")"/templates/ldap-configuration.json
+          # fill the LDAP_BIND_PASSWORD in templates/ldap-configuration.json file using jq
           jq --arg ATLAS_FEDERATED_SETTINGS_ID "${ATLAS_FEDERATED_SETTINGS_ID}" \
              '.ATLAS_FEDERATED_SETTINGS_ID |= $ATLAS_FEDERATED_SETTINGS_ID' \
-              "$(dirname "$0")/scripts/federated-settings-org-role-mapping.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/scripts/federated-settings-org-role-mapping.json"
-           OTHER_PARAMS=$(cat "$(dirname "$0")"/scripts/federated-settings-org-role-mapping-temp.json)
-     elif [[ "$ResourceName" == "federated-settings-org-role-mapping" ]]; then
-          echo "federated-settings-org-role-mapping"
-     elif [[ "$ResourceName" == "ldap-configuration" ]]; then
-          echo "ldap-configuration"
-     elif [[ "$ResourceName" == "ldap-verify" ]]; then
-          echo "ldap-configuration"
-          cat "$(dirname "$0")"/scripts/ldap-configuration.json
-          # fill the LDAP_BIND_PASSWORD in scripts/ldap-configuration.json file using jq
+              "$(dirname "$0")/templates/federated-settings-org-role-mapping.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/federated-settings-org-role-mapping.json"
+           OtherParams=$(cat "$(dirname "$0")"/templates/federated-settings-org-role-mapping-temp.json)
+
+     elif [ "$ResourceName" == "ldap-verify" ] || [ "$ResourceName" == "ldap-configuration" ]; then
+          echo "setting up other params for ldap"
+          cat "$(dirname "$0")"/templates/ldap-configuration.json
+          # fill the LDAP_BIND_PASSWORD in templates/ldap-configuration.json file using jq
           jq --arg LDAP_BIND_PASSWORD "${LDAP_BIND_PASSWORD}" \
              --arg LDAP_BIND_USER_NAME "${LDAP_BIND_USER_NAME}" \
              --arg LDAP_HOST_NAME "${LDAP_HOST_NAME}" \
              '.LDAP_BIND_PASSWORD |= $LDAP_BIND_PASSWORD | .LDAP_BIND_USER_NAME |= $LDAP_BIND_USER_NAME | .LDAP_HOST_NAME |= $LDAP_HOST_NAME' \
-              "$(dirname "$0")/scripts/ldap-configuration.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/scripts/ldap-configuration-temp.json"
+              "$(dirname "$0")/templates/ldap-configuration.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/ldap-configuration-temp.json"
 
-          OTHER_PARAMS=$(cat "$(dirname "$0")"/scripts/ldap-configuration-temp.json)
+          OtherParams=$(cat "$(dirname "$0")"/templates/ldap-configuration-temp.json)
           # convert json to string
           #OtherParamsString=$(echo "${OTHER_PARAMS}" | jq -r '.[0]')
     elif [[ "$ResourceName" == "third-party-integration" ]];  then
-          echo "third-party-integration"
+          echo "setting up other params for third-party-integration"
+
+          # setup the parameters in third-party-integration.json file
+          jq --arg webhook_create_url "$WEBHOOK_CREATE_URL" \
+             --arg webhook_update_url "$WEBHOOK_UPDATE_URL" \
+             --arg webhook_update_secret "$WEBHOOK_UPDATE_SECRET" \
+             --arg prometheus_user_name "$PROMETHEUS_USER_NAME" \
+             --arg prometheus_password_name "$PROMETHEUS_PASSWORD_NAME" \
+             --arg pager_duty_create_service_key "$PAGER_DUTY_CREATE_SERVICE_KEY" \
+             --arg pager_duty_update_service_key "$PAGER_DUTY_UPDATE_SERVICE_KEY" \
+             --arg data_dog_create_api_key "$DATA_DOG_CREATE_API_KEY" \
+             --arg data_dog_update_api_key "$DATA_DOG_UPDATE_API_KEY" \
+             --arg ops_genie_api_key "$OPS_GENIE_API_KEY" \
+             --arg microsoft_teams_webhook_create_url "$MICROSOFT_TEAMS_WEBHOOK_CREATE_URL" \
+             --arg microsoft_teams_webhook_update_url "$MICROSOFT_TEAMS_WEBHOOK_UPDATE_URL" \
+             '.WEBHOOK_CREATE_URL = $webhook_create_url |
+              .WEBHOOK_UPDATE_URL = $webhook_update_url |
+              .WEBHOOK_UPDATE_SECRET = $webhook_update_secret |
+              .PROMETHEUS_USER_NAME = $prometheus_user_name |
+              .PROMETHEUS_PASSWORD_NAME = $prometheus_password_name |
+              .PAGER_DUTY_CREATE_SERVICE_KEY = $pager_duty_create_service_key |
+              .PAGER_DUTY_UPDATE_SERVICE_KEY = $pager_duty_update_service_key |
+              .DATA_DOG_CREATE_API_KEY = $data_dog_create_api_key |
+              .DATA_DOG_UPDATE_API_KEY = $data_dog_update_api_key |
+              .OPS_GENIE_API_KEY = $ops_genie_api_key |
+              .MICROSOFT_TEAMS_WEBHOOK_CREATE_URL = $microsoft_teams_webhook_create_url |
+              .MICROSOFT_TEAMS_WEBHOOK_UPDATE_URL = $microsoft_teams_webhook_update_url' \
+              "$(dirname "$0")/templates/third-party-integration.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/third-party-integration-temp.json"
+
+          OtherParams=$(cat "$(dirname "$0")"/templates/third-party-integration-temp.json)
     fi
-    if [ -z ${OTHER_PARAMS+x} ];then
-        echo "OTHER_PARAMS param is empty"
-    fi
+
 
     Path="cfn-resources/${ResourceName}/"
     CodeBuild_Project_Name="${ResourceName}-project-$((1 + RANDOM % 1000))"
@@ -101,7 +139,7 @@ for ResourceName in "${ResourceNames[@]}"; do
         .[0].TargetLocationMaxConcurrency?|=$TargetLocationsMaxConcurrency |
         .[0].Accounts[0]?|=$AccountIds |
         .[0].Regions?|=($Regions | gsub(" "; "") | split(",")) ' \
-        "$(dirname "$0")/scripts/locations.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/locations-temp.json"
+        "$(dirname "$0")/templates/locations.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/locations-temp.json"
 
 
     jq --arg Repository "${Repository}" \
@@ -111,7 +149,7 @@ for ResourceName in "${ResourceNames[@]}"; do
        --arg PvtKey "${ATLAS_PRIVATE_KEY}" \
        --arg BranchName "${BranchName}" \
        --arg ProjectName "${CodeBuild_Project_Name}" \
-       --arg OtherParams "${OTHER_PARAMS}" \
+       --arg OtherParams "${OtherParams}" \
        --arg Path "${Path}" \
        --arg BuilderRole "${BuilderRole}" \
        --arg AssumeRole "${AssumeRole}" \
@@ -128,18 +166,21 @@ for ResourceName in "${ResourceNames[@]}"; do
       .BuilderRole[0]?|=$BuilderRole |
       .AssumeRole[0]?|=$AssumeRole |
       .LogDeliveryBucket[0]?|=$LogDeliveryBucket ' \
-      "$(dirname "$0")/scripts/params.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/params-temp.json"
+      "$(dirname "$0")/templates/params.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/params-temp.json"
+
 
     params_json_content=$(cat "$(dirname "$0")"/params-temp.json)
-
     locations_json_content=$(cat "$(dirname "$0")"/locations-temp.json)
+    params_string=$(echo "$params_json_content" | jq -c .)
+    locations_string=$(echo "$locations_json_content" | jq -c .)
+    echo "display the params: ${params_string}"
 
     # use the aws cli to start the automation execution
     aws ssm start-automation-execution \
         --document-name  ${AWS_SSM_Document_Name}\
         --document-version ${Document_Version} \
-        --parameters "${params_json_content}" \
-        --target-locations "${locations_json_content}" \
+        --parameters "${params_string}" \
+        --target-locations "${locations_string}" \
         --region "${Document_Region}"
 done
 
