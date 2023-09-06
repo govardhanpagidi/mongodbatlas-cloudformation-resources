@@ -63,9 +63,11 @@ for ResourceName in "${ResourceNames[@]}"; do
       # 2. trigger
       # 3. ldap-configuration
       # 4. ldap-verify
-      # 5. thirdpartyintegrations
+      # 5. third-party-integration
 
      # if condition for string comparison
+     # optimize if else
+
      if [ -n "${OTHER_PARAMS}" ];then
            OtherParams=${OTHER_PARAMS}
      elif [ "$ResourceName" == "trigger" ] && [ -z "${OTHER_PARAMS}" ] ; then
@@ -74,16 +76,16 @@ for ResourceName in "${ResourceNames[@]}"; do
 
      elif [[ "$ResourceName" == "federated-settings-org-role-mapping" ]]; then
           echo "setting up other params for federated-settings-org-role-mapping"
-          cat "$(dirname "$0")"/templates/ldap-configuration.json
-          # fill the LDAP_BIND_PASSWORD in templates/ldap-configuration.json file using jq
+
           jq --arg ATLAS_FEDERATED_SETTINGS_ID "${ATLAS_FEDERATED_SETTINGS_ID}" \
              '.ATLAS_FEDERATED_SETTINGS_ID |= $ATLAS_FEDERATED_SETTINGS_ID' \
               "$(dirname "$0")/templates/federated-settings-org-role-mapping.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/federated-settings-org-role-mapping.json"
-           OtherParams=$(cat "$(dirname "$0")"/templates/federated-settings-org-role-mapping-temp.json)
+          OtherParams=$(jq -c . "$(dirname "$0")"/templates/federated-settings-org-role-mapping-temp.json | tr -d '\n\t')
+          OtherParams_string="'$OtherParams'"
 
      elif [ "$ResourceName" == "ldap-verify" ] || [ "$ResourceName" == "ldap-configuration" ]; then
           echo "setting up other params for ldap"
-          cat "$(dirname "$0")"/templates/ldap-configuration.json
+
           # fill the LDAP_BIND_PASSWORD in templates/ldap-configuration.json file using jq
           jq --arg LDAP_BIND_PASSWORD "${LDAP_BIND_PASSWORD}" \
              --arg LDAP_BIND_USER_NAME "${LDAP_BIND_USER_NAME}" \
@@ -91,10 +93,10 @@ for ResourceName in "${ResourceNames[@]}"; do
              '.LDAP_BIND_PASSWORD |= $LDAP_BIND_PASSWORD | .LDAP_BIND_USER_NAME |= $LDAP_BIND_USER_NAME | .LDAP_HOST_NAME |= $LDAP_HOST_NAME' \
               "$(dirname "$0")/templates/ldap-configuration.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/ldap-configuration-temp.json"
 
-          OtherParams=$(cat "$(dirname "$0")"/templates/ldap-configuration-temp.json)
-          # convert json to string
-          #OtherParamsString=$(echo "${OTHER_PARAMS}" | jq -r '.[0]')
-    elif [[ "$ResourceName" == "third-party-integration" ]];  then
+          OtherParams=$(jq -c . "$(dirname "$0")"/templates/ldap-configuration-temp.json | tr -d '\n\t')
+          OtherParams_string="'$OtherParams'"
+
+    elif [ "$ResourceName" == "third-party-integration" ];  then
           echo "setting up other params for third-party-integration"
 
           # setup the parameters in third-party-integration.json file
@@ -123,9 +125,10 @@ for ResourceName in "${ResourceNames[@]}"; do
               .MICROSOFT_TEAMS_WEBHOOK_CREATE_URL = $microsoft_teams_webhook_create_url |
               .MICROSOFT_TEAMS_WEBHOOK_UPDATE_URL = $microsoft_teams_webhook_update_url' \
               "$(dirname "$0")/templates/third-party-integration.json" >tmp.$$.json && mv tmp.$$.json "$(dirname "$0")/templates/third-party-integration-temp.json"
-
-          OtherParams=$(cat "$(dirname "$0")"/templates/third-party-integration-temp.json)
+          OtherParams=$(jq -c . "$(dirname "$0")"/templates/third-party-integration-temp.json | tr -d '\n\t')
+          OtherParams_string="'$OtherParams'"
     fi
+
 
 
     Path="cfn-resources/${ResourceName}/"
@@ -149,7 +152,7 @@ for ResourceName in "${ResourceNames[@]}"; do
        --arg PvtKey "${ATLAS_PRIVATE_KEY}" \
        --arg BranchName "${BranchName}" \
        --arg ProjectName "${CodeBuild_Project_Name}" \
-       --arg OtherParams "${OtherParams}" \
+       --arg OtherParams "${OtherParams_string}" \
        --arg Path "${Path}" \
        --arg BuilderRole "${BuilderRole}" \
        --arg AssumeRole "${AssumeRole}" \
@@ -171,16 +174,16 @@ for ResourceName in "${ResourceNames[@]}"; do
 
     params_json_content=$(cat "$(dirname "$0")"/params-temp.json)
     locations_json_content=$(cat "$(dirname "$0")"/locations-temp.json)
-    params_string=$(echo "$params_json_content" | jq -c .)
-    locations_string=$(echo "$locations_json_content" | jq -c .)
-    echo "display the params: ${params_string}"
+#    params_string=$(echo "$params_json_content" | jq -c .)
+#    locations_string=$(echo "$locations_json_content" | jq -c .)
+    echo "display the params: ${params_json_content}"
 
     # use the aws cli to start the automation execution
     aws ssm start-automation-execution \
         --document-name  ${AWS_SSM_Document_Name}\
         --document-version ${Document_Version} \
-        --parameters "${params_string}" \
-        --target-locations "${locations_string}" \
+        --parameters "${params_json_content}" \
+        --target-locations "${locations_json_content}" \
         --region "${Document_Region}"
 done
 
